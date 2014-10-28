@@ -7,13 +7,13 @@
  * Licensed under the MIT license.
  * http://handsontable.com/
  *
- * Date: Tue Sep 29 2015 11:00:24 GMT-0700 (PDT)
+ * Date: Tue Sep 29 2015 13:09:37 GMT-0700 (PDT)
  */
 /*jslint white: true, browser: true, plusplus: true, indent: 4, maxerr: 50 */
 
 window.Handsontable = {
   version: '0.18.0',
-  buildDate: 'Tue Sep 29 2015 11:00:24 GMT-0700 (PDT)'
+  buildDate: 'Tue Sep 29 2015 13:09:37 GMT-0700 (PDT)'
 };
 (function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.Handsontable = f()}})(function(){var define,module,exports;return (function init(modules, cache, entry) {
   (function outer (modules, cache, entry) {
@@ -20041,7 +20041,7 @@ var jsonpatch;
     if (observer) {
       return observer;
     }
-    if (Object.observe) {
+    if (Object.observe && false) {
       observer = function(arr) {
         _unobserve(observer, obj);
         _observe(observer, obj);
@@ -20131,7 +20131,7 @@ var jsonpatch;
   }
   jsonpatch.observe = observe;
   function _observe(observer, obj) {
-    if (Object.observe) {
+    if (Object.observe && false) {
       Object.observe(obj, observer);
       for (var key in obj) {
         if (obj.hasOwnProperty(key)) {
@@ -20145,7 +20145,7 @@ var jsonpatch;
     return observer;
   }
   function _unobserve(observer, obj) {
-    if (Object.observe) {
+    if (Object.observe && false) {
       Object.unobserve(obj, observer);
       for (var key in obj) {
         if (obj.hasOwnProperty(key)) {
@@ -20159,7 +20159,7 @@ var jsonpatch;
     return observer;
   }
   function generate(observer) {
-    if (Object.observe) {
+    if (Object.observe && false) {
       Object.deliverChangeRecords(observer);
     } else {
       var mirror;
