@@ -7,13 +7,13 @@
  * Licensed under the MIT license.
  * http://handsontable.com/
  *
- * Date: Tue Sep 29 2015 10:38:14 GMT-0700 (PDT)
+ * Date: Tue Sep 29 2015 11:00:24 GMT-0700 (PDT)
  */
 /*jslint white: true, browser: true, plusplus: true, indent: 4, maxerr: 50 */
 
 window.Handsontable = {
   version: '0.18.0',
-  buildDate: 'Tue Sep 29 2015 10:38:14 GMT-0700 (PDT)'
+  buildDate: 'Tue Sep 29 2015 11:00:24 GMT-0700 (PDT)'
 };
 (function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.Handsontable = f()}})(function(){var define,module,exports;return (function init(modules, cache, entry) {
   (function outer (modules, cache, entry) {
@@ -4612,6 +4612,10 @@ Handsontable.Core = function Core(rootElement, userSettings) {
     return Handsontable.activeGuid === instance.guid;
   };
   this.destroyEditor = function(revertOriginal) {
+    var editor = this.getActiveEditor();
+    if (editor && editor.$htContainer && editor.$htContainer[0]) {
+      $('html').off('.' + editor.$htContainer[0].id);
+    }
     selection.refreshBorders(revertOriginal);
   };
   this.populateFromArray = function(row, col, input, endRow, endCol, source, method, direction, deltas) {
@@ -5992,6 +5996,10 @@ function EditorManager(instance, priv, selection) {
     });
   }
   this.destroyEditor = function(revertOriginal) {
+    var editor = this.getActiveEditor();
+    if (editor && editor.$htContainer && editor.$htContainer[0]) {
+      $('html').off('.' + editor.$htContainer[0].id);
+    }
     this.closeEditor(revertOriginal);
   };
   this.getActiveEditor = function() {
@@ -10769,6 +10777,10 @@ Handsontable.hooks.add('afterInit', function() {
       this.autofill.init();
     }
   }
+});
+Handsontable.hooks.add('afterDestroy', function() {
+  $(document).off('.autofill.' + this.guid, this.rootElement);
+  $(document).off('.moveOutside_' + this.guid);
 });
 Handsontable.Autofill = Autofill;
 
@@ -18428,6 +18440,7 @@ function TableView(instance) {
       instance.deselectCell();
     } else {
       instance.destroyEditor();
+      event.stopImmediatePropagation();
     }
   });
   this.eventManager.addEventListener(table, 'selectstart', function(event) {
@@ -20186,7 +20199,19 @@ var jsonpatch;
     };
   }
   function _generate(mirror, obj, patches, path) {
-    var newKeys = _objectKeys(obj);
+    if (!obj) {
+      if (Array.isArray(mirror)) {
+        obj = [];
+      } else if (mirror instanceof Object) {
+        obj = {};
+      }
+    }
+    if (obj.toJSON) {
+      obj = obj.toJSON();
+    }
+    var newKeys = Ember.isArray(obj) ? obj.map(function(i, idx) {
+      return idx + "";
+    }) : _objectKeys(obj);
     var oldKeys = _objectKeys(mirror);
     var changed = false;
     var deleted = false;
@@ -20223,6 +20248,8 @@ var jsonpatch;
     for (var t = 0; t < newKeys.length; t++) {
       var key = newKeys[t];
       if (!mirror.hasOwnProperty(key)) {
+        if (obj[key] === undefined || typeof obj[key] === 'function')
+          continue;
         patches.push({
           op: "add",
           path: path + "/" + escapePathComponent(key),

@@ -1197,6 +1197,10 @@ Handsontable.Core = function Core(rootElement, userSettings) {
    * @param {Boolean} [revertOriginal] If != `true`, edited data is saved. Otherwise previous value is restored
    */
   this.destroyEditor = function(revertOriginal) {
+    var editor = this.getActiveEditor();
+    if (editor && editor.$htContainer && editor.$htContainer[0]) {
+      $('html').off('.' + editor.$htContainer[0].id);
+    }
     selection.refreshBorders(revertOriginal);
   };
 
