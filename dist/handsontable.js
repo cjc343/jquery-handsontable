@@ -7,13 +7,13 @@
  * Licensed under the MIT license.
  * http://handsontable.com/
  *
- * Date: Thu Sep 10 2015 14:56:37 GMT+0200 (CEST)
+ * Date: Fri Sep 25 2015 15:07:57 GMT-0700 (PDT)
  */
 /*jslint white: true, browser: true, plusplus: true, indent: 4, maxerr: 50 */
 
 window.Handsontable = {
   version: '0.18.0',
-  buildDate: 'Thu Sep 10 2015 14:56:37 GMT+0200 (CEST)'
+  buildDate: 'Fri Sep 25 2015 15:07:57 GMT-0700 (PDT)'
 };
 (function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.Handsontable = f()}})(function(){var define,module,exports;return (function init(modules, cache, entry) {
   (function outer (modules, cache, entry) {
@@ -5426,11 +5426,7 @@ function DataMap(instance, priv, GridSettings) {
   this.priv = priv;
   this.GridSettings = GridSettings;
   this.dataSource = this.instance.getSettings().data;
-  if (this.dataSource[0]) {
-    this.duckSchema = this.recursiveDuckSchema(this.dataSource[0]);
-  } else {
-    this.duckSchema = {};
-  }
+  this.duckSchema = null;
   this.createMap();
 }
 DataMap.prototype.DESTINATION_RENDERER = 1;
@@ -5463,11 +5459,7 @@ DataMap.prototype.recursiveDuckColumns = function(schema, lastCol, parent) {
 };
 DataMap.prototype.createMap = function() {
   var i,
-      ilen,
-      schema = this.getSchema();
-  if (typeof schema === "undefined") {
-    throw new Error("trying to create `columns` definition but you didnt' provide `schema` nor `data`");
-  }
+      ilen;
   this.colToPropCache = [];
   this.propToColCache = new MultiMap();
   var columns = this.instance.getSettings().columns;
@@ -5479,6 +5471,10 @@ DataMap.prototype.createMap = function() {
       }
     }
   } else {
+    var schema = this.getSchema();
+    if (typeof schema === "undefined") {
+      throw new Error("trying to create `columns` definition but you didnt' provide `schema` nor `data`");
+    }
     this.recursiveDuckColumns(schema);
   }
 };
@@ -5506,6 +5502,13 @@ DataMap.prototype.getSchema = function() {
       return schema();
     }
     return schema;
+  }
+  if (this.duckSchema === null) {
+    if (this.dataSource[0]) {
+      this.duckSchema = this.recursiveDuckSchema(this.dataSource[0]);
+    } else {
+      this.duckSchema = {};
+    }
   }
   return this.duckSchema;
 };
