@@ -1170,6 +1170,10 @@ Handsontable.Core = function Core(rootElement, userSettings) {
    * @param {Boolean} [revertOriginal] If != `true`, edited data is saved. Otherwise previous value is restored
    */
   this.destroyEditor = function(revertOriginal) {
+    var editor = this.getActiveEditor();
+    if (editor && editor.$htContainer && editor.$htContainer[0]) {
+      $('html').off('.' + editor.$htContainer[0].id);
+    }
     selection.refreshBorders(revertOriginal);
   };
 
@@ -1496,11 +1500,9 @@ Handsontable.Core = function Core(rootElement, userSettings) {
     if (typeof settings.className !== "undefined") {
       if (GridSettings.prototype.className) {
         dom.removeClass(instance.rootElement, GridSettings.prototype.className);
-//        instance.rootElement.removeClass(GridSettings.prototype.className);
       }
       if (settings.className) {
         dom.addClass(instance.rootElement, settings.className);
-//        instance.rootElement.addClass(settings.className);
       }
     }
 

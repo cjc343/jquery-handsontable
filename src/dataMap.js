@@ -26,7 +26,7 @@ function DataMap(instance, priv, GridSettings) {
   this.GridSettings = GridSettings;
   this.dataSource = this.instance.getSettings().data;
 
-  if (this.dataSource[0]) {
+  if (this.dataSource[0] && !this.instance.getSettings().dataSchema) {
     this.duckSchema = this.recursiveDuckSchema(this.dataSource[0]);
   }
   else {
@@ -78,10 +78,7 @@ DataMap.prototype.recursiveDuckColumns = function (schema, lastCol, parent) {
 };
 
 DataMap.prototype.createMap = function () {
-  var i, ilen, schema = this.getSchema();
-  if (typeof schema === "undefined") {
-    throw new Error("trying to create `columns` definition but you didnt' provide `schema` nor `data`");
-  }
+  var i, ilen;
   this.colToPropCache = [];
   this.propToColCache = new MultiMap();
   var columns = this.instance.getSettings().columns;
@@ -96,6 +93,10 @@ DataMap.prototype.createMap = function () {
     }
   }
   else {
+    if (typeof this.getSchema() === "undefined") {
+      throw new Error("trying to create `columns` definition but you didnt' provide `schema` nor `data`");
+    }
+    var schema = this.getSchema();
     this.recursiveDuckColumns(schema);
   }
 };
