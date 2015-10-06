@@ -125,7 +125,6 @@ function TableView(instance) {
       instance.deselectCell();
     } else {
       instance.destroyEditor();
-      event.stopImmediatePropagation();
     }
   });
 
