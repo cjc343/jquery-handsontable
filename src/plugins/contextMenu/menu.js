@@ -17,7 +17,7 @@ import {EventManager} from './../../eventManager';
 import {extend, isObject, objectEach, mixin} from './../../helpers/object';
 import {isSeparator, isDisabled, isSelectionDisabled, hasSubMenu, normalizeSelection} from './utils';
 import {KEY_CODES} from './../../helpers/unicode';
-import {localHooks} from './../../pluginHooks';
+import {localHooks} from './../../mixins/localHooks';
 import {SEPARATOR, predefinedItems} from './predefinedItems';
 import {stopPropagation, stopImmediatePropagation, pageX, pageY} from './../../helpers/dom/event';
 
@@ -60,7 +60,7 @@ class Menu {
   }
 
   /**
-   * Check is menu is using as sub-menu.
+   * Check if menu is using as sub-menu.
    *
    * @returns {Boolean}
    */
@@ -87,6 +87,7 @@ class Menu {
         renderer: (hot, TD, row, col, prop, value) => this.menuItemRenderer(hot, TD, row, col, prop, value)
       }],
       renderAllRows: true,
+      fragmentSelection: 'cell',
       beforeKeyDown: (event) => this.onBeforeKeyDown(event),
       afterOnCellMouseOver: (event, coords, TD) => this.openSubMenu(coords.row)
     };
@@ -118,13 +119,12 @@ class Menu {
       this.hotMenu.destroy();
       this.hotMenu = null;
       this.hot.getSettings().outsideClickDeselects = this.origOutsideClickDeselects;
-      this.hot.listen();
       this.runLocalHooks('afterClose');
     }
   }
 
   /**
-   * Open sub menu at row index.
+   * Open sub menu at the provided row index.
    *
    * @param {Number} row Row index.
    * @returns {Menu|Boolean} Returns created menu or `false` if no one menu was created.
@@ -137,7 +137,7 @@ class Menu {
     if (!cell || !hasSubMenu(cell)) {
       return false;
     }
-    let dataItem = this.hotMenu.getData()[row];
+    let dataItem = this.hotMenu.getSourceDataAtRow(row);
     let subMenu = new Menu(this.hot, {
       parent: this,
       name: dataItem.name,
@@ -157,7 +157,7 @@ class Menu {
    * @param {Number} row Row index.
    */
   closeSubMenu(row) {
-    let dataItem = this.hotMenu.getData()[row];
+    let dataItem = this.hotMenu.getSourceDataAtRow(row);
     let menus = this.hotSubMenus[dataItem.key];
 
     if (menus) {
@@ -206,11 +206,11 @@ class Menu {
    *
    * @param {Event} [event]
    */
-  executeCommand(event = void 0) {
+  executeCommand(event) {
     if (!this.isOpened() || !this.hotMenu.getSelected()) {
       return;
     }
-    const selectedItem = this.hotMenu.getData()[this.hotMenu.getSelected()[0]];
+    const selectedItem = this.hotMenu.getSourceDataAtRow(this.hotMenu.getSelected()[0]);
 
     this.runLocalHooks('select', selectedItem, event);
 
@@ -260,7 +260,7 @@ class Menu {
   /**
    * Set menu position above cursor object.
    *
-   * @param {Cursor} cursor
+   * @param {Cursor} cursor `Cursor` object.
    */
   setPositionAboveCursor(cursor) {
     let top = cursor.top - this.container.offsetHeight;
@@ -275,7 +275,7 @@ class Menu {
   /**
    * Set menu position below cursor object.
    *
-   * @param {Cursor} cursor
+   * @param {Cursor} cursor `Cursor` object.
    */
   setPositionBelowCursor(cursor) {
     let top = cursor.top - 1;
@@ -290,7 +290,7 @@ class Menu {
   /**
    * Set menu position on the right of cursor object.
    *
-   * @param {Cursor} cursor
+   * @param {Cursor} cursor `Cursor` object.
    */
   setPositionOnRightOfCursor(cursor) {
     let left;
@@ -306,7 +306,7 @@ class Menu {
   /**
    * Set menu position on the left of cursor object.
    *
-   * @param {Cursor} cursor
+   * @param {Cursor} cursor `Cursor` object.
    */
   setPositionOnLeftOfCursor(cursor) {
     this.container.style.left = (cursor.left - this.container.offsetWidth + getScrollbarWidth() + 4) + 'px';
@@ -343,7 +343,7 @@ class Menu {
    * Select next cell in opened menu.
    *
    * @param {Number} row Row index.
-   * @param {Number} col Column indx.
+   * @param {Number} col Column index.
    */
   selectNextCell(row, col) {
     let nextRow = row + 1;
@@ -385,7 +385,7 @@ class Menu {
    * @private
    */
   menuItemRenderer(hot, TD, row, col, prop, value) {
-    let item = hot.getData()[row];
+    let item = hot.getSourceDataAtRow(row);
     let wrapper = document.createElement('div');
 
     let isSubMenu = (item) => {
@@ -397,9 +397,14 @@ class Menu {
     let itemIsDisabled = (item) => {
       return item.disabled === true || (typeof item.disabled == 'function' && item.disabled.call(this.hot) === true);
     };
+    let itemIsHidden = (item) => {
+      return typeof item.hidden == 'function' && item.hidden.call(this.hot) === true;
+    };
     let itemIsSelectionDisabled = (item) => {
       return item.disableSelection;
     };
+    let isHidden = itemIsHidden(item);
+
     if (typeof value === 'function') {
       value = value.call(this.hot);
     }
@@ -410,14 +415,19 @@ class Menu {
     if (itemIsSeparator(item)) {
       addClass(TD, 'htSeparator');
 
-    } else if (typeof item.renderer === 'function') {
+    } else if (!isHidden && typeof item.renderer === 'function') {
       addClass(TD, 'htCustomMenuRenderer');
       TD.appendChild(item.renderer(hot, wrapper, row, col, prop, value));
 
     } else {
       fastInnerHTML(wrapper, value);
     }
-    if (itemIsDisabled(item)) {
+    if (isHidden) {
+      if (TD.parentNode) {
+        addClass(TD.parentNode, 'htHidden');
+      }
+
+    } else if (itemIsDisabled(item)) {
       addClass(TD, 'htDisabled');
       this.eventManager.addEventListener(wrapper, 'mouseenter', () => hot.deselectCell());
 
@@ -431,7 +441,7 @@ class Menu {
       if (itemIsSelectionDisabled(item)) {
         this.eventManager.addEventListener(wrapper, 'mouseenter', () => hot.deselectCell());
       } else {
-        this.eventManager.addEventListener(wrapper, 'mouseenter', () => hot.selectCell(row, col));
+        this.eventManager.addEventListener(wrapper, 'mouseenter', () => hot.selectCell(row, col, void 0, void 0, void 0, false));
       }
     } else {
       removeClass(TD, 'htSubmenu');
@@ -440,7 +450,7 @@ class Menu {
       if (itemIsSelectionDisabled(item)) {
         this.eventManager.addEventListener(wrapper, 'mouseenter', () => hot.deselectCell());
       } else {
-        this.eventManager.addEventListener(wrapper, 'mouseenter', () => hot.selectCell(row, col));
+        this.eventManager.addEventListener(wrapper, 'mouseenter', () => hot.selectCell(row, col, void 0, void 0, void 0, false));
       }
     }
   }
@@ -449,7 +459,7 @@ class Menu {
    * Create container/wrapper for handsontable.
    *
    * @private
-   * @param {String} [name] Class name
+   * @param {String} [name] Class name.
    * @returns {HTMLElement}
    */
   createContainer(name = null) {
@@ -515,7 +525,7 @@ class Menu {
 
       case KEY_CODES.ENTER:
         if (selection) {
-          if (this.hotMenu.getData()[selection[0]].submenu) {
+          if (this.hotMenu.getSourceDataAtRow(selection[0]).submenu) {
             stopEvent = true;
           } else {
             this.executeCommand(event);
